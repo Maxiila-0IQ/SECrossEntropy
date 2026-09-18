@@ -1,8 +1,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from app.schemas import BatteryInput, HourInput, ScenarioRequest
 
 TESTS_DIR = Path(__file__).parent
@@ -54,8 +52,3 @@ def load_cases():
         case["expected_output"] = c.get("expected_output", {})
         cases.append(case)
     return cases
-
-
-@pytest.fixture
-def scenario():
-    return make_scenario()

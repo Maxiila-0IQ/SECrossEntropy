@@ -83,7 +83,6 @@ def test_reserve_honored():
 
 
 def test_no_discharge_window_honored():
-    scenario = make_scenario()
     tariff = [12.0 if h < 20 else 40.0 for h in range(24)]
     scenario = make_scenario(scenario_id="ndw", tariff=tariff)
     d = DirectiveEntry(note_index=0, applies=True, directive_type="no_discharge_window",

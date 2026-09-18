@@ -11,4 +11,4 @@ class RetryableLLMError(LLMError):
 
 
 class PermanentLLMError(LLMError):
-    """Non-retryable provider error (400, 401, 402, 422)."""
+    """Non-retryable provider error (400, 401, 402, 403, 422)."""

@@ -27,7 +27,7 @@ def dict_to_scenario(data: dict) -> ScenarioRequest:
     return ScenarioRequest(**data)
 
 
-async def run_one(path: Path, verbose: bool = False) -> dict:
+async def run_one(path: Path) -> dict:
     data = load_sample(path)
     scenario = dict_to_scenario(data)
     t0 = time.perf_counter()
@@ -114,7 +114,7 @@ async def main():
     results = []
     for path in sample_files:
         print(f"  {path.name}...", file=sys.stderr, end=" ", flush=True)
-        r = await run_one(path, verbose="--verbose" in sys.argv)
+        r = await run_one(path)
         results.append(r)
         print(f"{r['status']} ({r['total_ms']}ms)", file=sys.stderr)
 
