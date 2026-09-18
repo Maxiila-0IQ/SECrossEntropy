@@ -16,17 +16,17 @@ Operator Notes (natural language)
         │ structured directives (JSON)
         ▼
    ┌───────────┐
-   │ Guardrails │  deterministic validation + repair
+   │ Guardrails│  deterministic validation + repair
    └────┬──────┘
         │ corrected directives
         ▼
    ┌───────────┐
-   │ Optimizer  │  PuLP LP solver (CBC)
+   │ Optimizer │  PuLP LP solver (CBC)
    └────┬──────┘
         │ 24-hour plan
         ▼
    ┌──────────┐
-   │  Replay   │  independent recomputation of all constraints
+   │  Replay  │  independent recomputation of all constraints
    └────┬─────┘
         │ pass/fail + violations
         ▼
