@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Agent
+agent.md
+
+# Internal docs
+LLM.md
+LLM_EXAMPLES.md
+
+# PDFs
+*.pdf

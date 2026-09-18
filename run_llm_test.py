@@ -1,0 +1,151 @@
+"""LLM Interpreter CLI — test operator-note interpretation from the terminal."""
+
+import argparse
+import logging
+import sys
+
+from llm import DeepSeekClient, LLMInterpreter
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Interpret operator notes into energy directives using an LLM.",
+    )
+    parser.add_argument(
+        "-n", "--note",
+        action="append",
+        required=True,
+        metavar="NOTE",
+        help="Operator note to interpret (repeatable, 1-3 notes).",
+    )
+    parser.add_argument(
+        "-s", "--scenario-id",
+        default="CLI-001",
+        metavar="ID",
+        help="Scenario identifier (default: CLI-001).",
+    )
+    parser.add_argument(
+        "--deepseek",
+        action="store_true",
+        help="Use DeepSeek API instead of local model.",
+    )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Model name override.",
+    )
+    parser.add_argument(
+        "--base-url",
+        default=None,
+        help="API base URL override.",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=30.0,
+        help="API timeout in seconds (default: 30).",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=1,
+        help="Max retry attempts (default: 1).",
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=1200,
+        help="Max output tokens (default: 1200).",
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show DEBUG logs.",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress all logs (JSON to stdout only).",
+    )
+    return parser.parse_args()
+
+
+def resolve_config(args: argparse.Namespace) -> dict:
+    if args.deepseek:
+        import os
+        return {
+            "api_key": os.environ.get("DEEPSEEK_API_KEY", ""),
+            "base_url": args.base_url or os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+            "model": args.model or os.environ.get("DEEPSEEK_MODEL", "deepseek-flash"),
+        }
+    return {
+        "api_key": "not-needed",
+        "base_url": args.base_url or "http://0.0.0.0:8080/v1",
+        "model": args.model or "/models/Qwen3-14B-Q5_K_M.gguf",
+    }
+
+
+def main() -> None:
+    args = parse_args()
+
+    # Logging
+    if args.quiet:
+        log_level = logging.CRITICAL
+    elif args.verbose:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s %(name)s %(levelname)s %(message)s",
+        stream=sys.stderr,
+    )
+
+    config = resolve_config(args)
+
+    if args.deepseek and not config["api_key"]:
+        print("ERROR: Set DEEPSEEK_API_KEY env var", file=sys.stderr)
+        sys.exit(1)
+
+    client = DeepSeekClient(
+        api_key=config["api_key"],
+        base_url=config["base_url"],
+        model=config["model"],
+        timeout=args.timeout,
+    )
+    interpreter = LLMInterpreter(
+        client=client,
+        max_retries=args.max_retries,
+        max_tokens=args.max_tokens,
+    )
+
+    notes = args.note
+
+    print(f"Model: {config['model']}", file=sys.stderr)
+    print(f"Base URL: {config['base_url']}", file=sys.stderr)
+    print(f"Notes ({len(notes)}):", file=sys.stderr)
+    for i, note in enumerate(notes):
+        print(f"  [{i}] {note}", file=sys.stderr)
+    print(file=sys.stderr)
+
+    result = interpreter.interpret(notes, scenario_id=args.scenario_id)
+
+    # JSON to stdout
+    print(result.model_dump_json(indent=2))
+
+    # Summary to stderr
+    print(file=sys.stderr)
+    print("--- Interpretation Summary ---", file=sys.stderr)
+    for entry in result.directive_interpretation:
+        adj = entry.structured_adjustment
+        status = "APPLIES" if entry.applies else "no_op"
+        print(
+            f"  Note {entry.note_index}: {entry.directive_type} ({status}) "
+            f"adjustment={adj}",
+            file=sys.stderr,
+        )
+
+
+if __name__ == "__main__":
+    main()
