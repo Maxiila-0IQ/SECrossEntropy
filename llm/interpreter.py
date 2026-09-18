@@ -41,10 +41,12 @@ class LLMInterpreter:
         client: LLMClient,
         max_retries: int = 1,
         max_tokens: int = 1200,
+        response_format: dict | None = None,
     ) -> None:
         self._client = client
         self._max_retries = max_retries
         self._max_tokens = max_tokens
+        self._response_format = response_format
         logger.info(
             "llm_interpreter_init max_retries=%d max_tokens=%d",
             max_retries,
@@ -81,6 +83,7 @@ class LLMInterpreter:
                     system_prompt=SYSTEM_PROMPT,
                     user_prompt=user_prompt,
                     max_tokens=self._max_tokens,
+                    response_format=self._response_format,
                 )
                 latency_ms = (time.perf_counter() - t0) * 1000
 

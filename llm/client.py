@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Any
 
 from openai import OpenAI
 from openai.types import CompletionUsage
@@ -56,6 +57,8 @@ class LLMClient:
         system_prompt: str,
         user_prompt: str,
         max_tokens: int,
+        *,
+        response_format: dict | None = None,
     ) -> tuple[str, CompletionUsage | None]:
         logger.debug(
             "llm_parse_start model=%s max_tokens=%d",
@@ -63,17 +66,19 @@ class LLMClient:
             max_tokens,
         )
 
+        body: dict[str, Any] = {
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "max_tokens": max_tokens,
+        }
+        if response_format:
+            body["response_format"] = response_format
+
         try:
-            completion = self._client.chat.completions.create(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                response_format={"type": "json_object"},
-                max_tokens=max_tokens,
-                extra_body={"thinking": {"type": "disabled"}},
-            )
+            completion = self._client.chat.completions.create(**body)
         except Exception as exc:
             logger.debug("llm_api_exception type=%s", type(exc).__name__)
             self._raise_mapped(exc)
