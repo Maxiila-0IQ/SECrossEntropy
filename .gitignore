@@ -224,8 +224,20 @@ agent.md
 LLM.md
 LLM_EXAMPLES.md
 
-# Sample data
+# Test data and samples
 tests/samples/
+tests/cases.json
+
+# Logs
+*.log
 
 # PDFs
 *.pdf
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

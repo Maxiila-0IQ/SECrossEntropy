@@ -13,7 +13,7 @@ from app.constraints import build_constraints
 from app.optimize import solve_and_build
 from app.baseline import build_baseline
 from app.replay import validate_plan
-from app.interpret import interpret_notes
+from app.pipeline import interpret_notes
 
 logging.basicConfig(
     level=logging.INFO,

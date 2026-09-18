@@ -6,8 +6,8 @@ MAX_HOURS = 24
 
 class Settings:
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "openai/gpt-oss-120b")
-    LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "deepseek-flash")
+    LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
     LLM_TIMEOUT: float = float(os.getenv("LLM_TIMEOUT", "8"))
     LLM_TEMPERATURE: float = 0.0
 

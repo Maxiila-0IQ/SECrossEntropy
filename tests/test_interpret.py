@@ -3,7 +3,7 @@ import pytest
 from app.fallback import parse_note
 from app.guardrails import validate_entries
 from app.schemas import BatteryInput
-from app.interpret import interpret_notes
+from app.pipeline import interpret_notes
 
 
 BATTERY = BatteryInput(
@@ -132,20 +132,20 @@ def test_hours_repaired_sorted_dedup():
 
 
 def test_resolve_percentage_of_capacity_in_llm_output():
-    import app.interpret as interpret_mod
+    import app.pipeline as pipeline_mod
     notes = ["Keep at least 50% of the battery capacity stored in the battery from 6 PM until 9 PM for emergency operations."]
     raw = [{"note_index": 0, "applies": True, "directive_type": "minimum_battery_reserve",
             "structured_adjustment": {"hours": [18, 19, 20], "minimum_energy_kwh": 0.5},
             "explanation": "model fraction placeholder"}]
-    patched = interpret_mod._resolve_percentage_of_capacity(raw, notes, BATTERY)
+    patched = pipeline_mod._resolve_percentage_of_capacity(raw, notes, BATTERY)
     assert patched[0]["structured_adjustment"]["minimum_energy_kwh"] == 250.0
 
 
 def test_resolve_does_not_touch_absolute_reserve():
-    import app.interpret as interpret_mod
+    import app.pipeline as pipeline_mod
     notes = ["The data center requires at least 80 kWh to remain in the battery from 6 PM until 10 PM."]
     raw = [{"note_index": 0, "applies": True, "directive_type": "minimum_battery_reserve",
             "structured_adjustment": {"hours": [18, 19, 20, 21], "minimum_energy_kwh": 80.0},
             "explanation": "x"}]
-    patched = interpret_mod._resolve_percentage_of_capacity(raw, notes, BATTERY)
+    patched = pipeline_mod._resolve_percentage_of_capacity(raw, notes, BATTERY)
     assert patched[0]["structured_adjustment"]["minimum_energy_kwh"] == 80.0

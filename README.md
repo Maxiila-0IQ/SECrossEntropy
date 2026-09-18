@@ -1,127 +1,188 @@
-# GridWise — LLM-Assisted Smart Campus Energy Optimization
+# GridWise — Smart Campus Energy Optimizer
 
-LLM interpreter module for the BUP CSE Fest 2026 hackathon challenge.
+**BUP CSE Fest 2026 Hackathon**
 
-Converts natural-language operator notes into structured energy directives using an LLM.
+Operator writes plain-English notes about campus energy constraints. An LLM interprets them, a deterministic guardrail validates and repairs the interpretation, a PuLP optimizer schedules battery and grid, and an independent replay validator recomputes everything to prove correctness.
 
-## Project Structure
+## Architecture
 
 ```
-llm/
-  __init__.py          # Public exports
-  models.py            # Pydantic models (DirectiveType, DirectiveInterpretationResponse)
-  errors.py            # Error hierarchy (LLMError, RetryableLLMError, etc.)
-  prompts.py           # System prompt (gridwise-llm-v3) and user prompt builder
-  client.py            # LLMClient — OpenAI-compatible API client
-  interpreter.py       # LLMInterpreter — retry, backoff, safe no_op fallback
-app/
-  main.py              # FastAPI endpoints (/health, /optimize-energy)
-  interpret.py         # Bridges llm/ module to app/ guardrails
-  guardrails.py        # Validates LLM output against constraints
-  constraints.py       # Builds optimization constraints from directives
-  optimize.py          # LP solver (PuLP)
-  schemas.py           # Pydantic request/response models
-  config.py            # Settings (solver config, LLM endpoint)
-tests/
-  stress_tests.py      # 62 stress tests across 7 categories
-  samples/             # 10 sample JSONs for end-to-end testing
-  run_samples.py       # Batch runner: sample JSONs through full pipeline
-  run_llm_test.py      # CLI for single-note testing
-  run_stress_tests.py  # Stress test runner
+Operator Notes (natural language)
+        │
+        ▼
+   ┌─────────┐
+   │   LLM   │  DeepSeek-V4.1-Flash via OpenAI-compatible API
+   └────┬────┘
+        │ structured directives (JSON)
+        ▼
+   ┌───────────┐
+   │ Guardrails │  deterministic validation + repair
+   └────┬──────┘
+        │ corrected directives
+        ▼
+   ┌───────────┐
+   │ Optimizer  │  PuLP LP solver (CBC)
+   └────┬──────┘
+        │ 24-hour plan
+        ▼
+   ┌──────────┐
+   │  Replay   │  independent recomputation of all constraints
+   └────┬─────┘
+        │ pass/fail + violations
+        ▼
+   Final JSON response
+```
+
+## Stack
+
+| Layer | Technology |
+|-------|-----------|
+| LLM | deepseek-flash (DeepSeek API) |
+| Backend | FastAPI + Uvicorn |
+| Optimizer | PuLP (CBC solver) with SciPy fallback |
+| Validation | Pydantic v2 + custom replay validator |
+| Python | 3.11+ |
+
+## Quick Start
+
+```bash
+git clone https://github.com/Maxiila-0IQ/SECrossEntropy.git
+cd SECrossEntropy
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Set your DeepSeek API key:
+
+```bash
+export DEEPSEEK_API_KEY="sk-your-key-here"
+```
+
+Start the server:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+## API
+
+### Health Check
+
+```bash
+curl http://localhost:8000/health
+```
+
+### Optimize Energy
+
+```bash
+curl -X POST http://localhost:8000/optimize-energy \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scenario_id": "demo",
+    "operator_notes": [
+      "Wash solar panels from noon to 2 PM. Output drops to 25%.",
+      "Keep at least 100 kWh battery reserve from 6 PM to 10 PM."
+    ],
+    "hours": [
+      {"hour": 0, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 1, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 2, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 3, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 4, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 5, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 6, "demand_kwh": 80, "solar_kwh": 30, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 7, "demand_kwh": 80, "solar_kwh": 60, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 8, "demand_kwh": 80, "solar_kwh": 100, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 9, "demand_kwh": 80, "solar_kwh": 140, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 10, "demand_kwh": 80, "solar_kwh": 170, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 11, "demand_kwh": 80, "solar_kwh": 190, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 12, "demand_kwh": 80, "solar_kwh": 200, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 13, "demand_kwh": 80, "solar_kwh": 190, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 14, "demand_kwh": 80, "solar_kwh": 170, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 15, "demand_kwh": 80, "solar_kwh": 140, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 16, "demand_kwh": 80, "solar_kwh": 100, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 17, "demand_kwh": 80, "solar_kwh": 60, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 18, "demand_kwh": 80, "solar_kwh": 30, "tariff_bdt_per_kwh": 8.0},
+      {"hour": 19, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 8.0},
+      {"hour": 20, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 8.0},
+      {"hour": 21, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 8.0},
+      {"hour": 22, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 6.0},
+      {"hour": 23, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 6.0}
+    ],
+    "battery": {
+      "capacity_kwh": 500,
+      "initial_energy_kwh": 250,
+      "minimum_energy_kwh": 10,
+      "max_charge_kwh_per_hour": 50,
+      "max_discharge_kwh_per_hour": 50
+    }
+  }'
 ```
 
 ## Supported Directives
 
-| Directive | structured_adjustment | Description |
-|---|---|---|
-| `solar_reduction` | `{"hours": [...], "factor": float}` | Usable solar multiplied by factor |
-| `minimum_battery_reserve` | `{"hours": [...], "minimum_energy_kwh": float}` | Min battery energy after listed hours |
-| `no_charge_window` | `{"hours": [...]}` | Battery charging = 0 |
-| `no_discharge_window` | `{"hours": [...]}` | Battery discharging = 0 |
+| Directive | structured_adjustment | Effect |
+|-----------|----------------------|--------|
+| `solar_reduction` | `{"hours": [...], "factor": float}` | Solar output multiplied by factor |
+| `minimum_battery_reserve` | `{"hours": [...], "minimum_energy_kwh": float}` | Minimum battery energy after hour |
+| `no_charge_window` | `{"hours": [...]}` | Charging disabled |
+| `no_discharge_window` | `{"hours": [...]}` | Discharging disabled |
 | `max_grid_window` | `{"hours": [...], "max_grid_kwh": float}` | Grid import cap per hour |
-| `no_op` | `null` | No supported energy directive |
+| `no_op` | `null` | No energy directive |
+
+## Replay Validator Checks
+
+The replay validator independently recomputes every constraint the judge checks:
+
+- Effective solar (solar_used ≤ effective_solar per hour)
+- Energy balance (grid + solar + discharge = demand + charge)
+- Battery transition (E tracks charge/discharge correctly)
+- Capacity limits (E ≤ capacity_kwh)
+- Minimum reserve (E ≥ minimum_energy_kwh)
+- Charge/discharge rate limits
+- No-charge / no-discharge window compliance
+- Grid caps
+- End-of-day neutrality (E[23] = initial energy)
+- Totals recomputation (grid, cost, peak)
+
+## Testing
+
+```bash
+# End-to-end: 15 sample scenarios through full pipeline
+python tests/run_samples.py
+
+# Stress tests: 62 tests across 7 categories
+python tests/run_stress_tests.py
+
+# Single note via CLI
+python tests/run_llm_test.py -n "No charging from 2 PM to 5 PM."
+```
+
+## Docker
+
+```bash
+docker build -t gridwise .
+docker run -p 8000:8000 -e DEEPSEEK_API_KEY="sk-your-key" gridwise
+```
+
+```bash
+curl http://localhost:8000/health
+```
+
+## Reproducibility
+
+- All constraints are deterministic (no randomness in optimizer or guardrails)
+- LLM output is validated and repaired by guardrails before optimization
+- Replay validator recomputes everything independently — if replay passes, the solution is correct
+- Sample JSONs in `tests/samples/` provide fixed test cases
+- LLM call has 8s timeout with automatic fallback to regex parser if LLM is unavailable
 
 ## Environment Variables
 
-```bash
-# Local model (default)
-# No env vars needed — uses http://0.0.0.0:8080/v1
-
-# Groq API (optional)
-# export GROQ_API_KEY="your-groq-api-key"
-# export LLM_MODEL="openai/gpt-oss-20b"
-# export LLM_BASE_URL="https://api.groq.com/openai/v1"
-```
-
-## Usage in FastAPI
-
-```python
-from llm import LLMInterpreter, LLMClient
-
-client = LLMClient(
-    api_key="your-groq-api-key",
-    base_url="https://api.groq.com/openai/v1",
-    model="openai/gpt-oss-20b",
-    timeout=30.0,
-)
-interpreter = LLMInterpreter(client=client, max_retries=1, max_tokens=1200)
-
-result = interpreter.interpret(["Solar drops to 20% from 1 PM to 3 PM."])
-print(result.model_dump())
-```
-
-### Response Format
-
-```json
-{
-  "directive_interpretation": [
-    {
-      "note_index": 0,
-      "applies": true,
-      "directive_type": "solar_reduction",
-      "structured_adjustment": {"hours": [13, 14], "factor": 0.2},
-      "explanation": "Solar output reduced to 20% during hours 13 and 14."
-    }
-  ]
-}
-```
-
-## Sample Pipeline
-
-Process all 10 sample JSONs through the full pipeline (LLM → guardrails → optimizer):
-
-```bash
-python tests/run_samples.py
-```
-
-Each sample is a complete `ScenarioRequest` with operator notes, 24-hour demand/solar/tariff data, and battery config. The runner outputs optimization results and replay validation status.
-
-## CLI Testing
-
-```bash
-# Single note
-python tests/run_llm_test.py -n "No charging from 2 PM to 5 PM."
-
-# Multiple notes
-python tests/run_llm_test.py -n "Solar drops to 20%." -n "Battery reserve at least 100 kWh."
-```
-
-## Stress Tests
-
-```bash
-# Run all 62 tests
-python tests/run_stress_tests.py
-
-# Run specific category (1-7)
-python tests/run_stress_tests.py --category 3
-```
-
-### Categories
-
-1. Paraphrase families (29 tests)
-2. Time edge cases (6 tests)
-3. Solar factor traps (8 tests)
-4. Charge vs discharge ambiguity (6 tests)
-5. Vague/insufficient notes (6 tests)
-6. Adversarial / injection (5 tests)
-7. Multi-note requests (2 tests)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DEEPSEEK_API_KEY` | (required) | DeepSeek API key |
+| `LLM_MODEL` | `deepseek-flash` | Model identifier |
+| `LLM_BASE_URL` | `https://api.deepseek.com` | API base URL |
+| `LLM_TIMEOUT` | `8` | LLM call timeout (seconds) |
+| `SOLVER_BACKEND` | `pulp` | Solver: `pulp` or `scipy` |

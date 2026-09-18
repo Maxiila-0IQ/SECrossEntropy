@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 from app.schemas import ScenarioRequest
-from app.interpret import interpret_notes
+from app.pipeline import interpret_notes
 from app.constraints import build_constraints
 from app.optimize import solve_and_build
 from app.replay import validate_plan
