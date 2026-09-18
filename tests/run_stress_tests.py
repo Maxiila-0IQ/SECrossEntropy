@@ -7,7 +7,7 @@ import os
 import sys
 
 from llm import LLMClient, LLMInterpreter
-from tests.stress_tests import STRESS_TESTS
+from stress_tests import STRESS_TESTS
 
 NUMERIC_TOLERANCE = 0.01
 

@@ -21,13 +21,13 @@ app/
   constraints.py       # Builds optimization constraints from directives
   optimize.py          # LP solver (PuLP)
   schemas.py           # Pydantic request/response models
-  config.py            # Settings (Groq API, solver config)
+  config.py            # Settings (solver config, LLM endpoint)
 tests/
   stress_tests.py      # 62 stress tests across 7 categories
   samples/             # 10 sample JSONs for end-to-end testing
-run_samples.py         # Batch runner: sample JSONs through full pipeline
-run_llm_test.py        # CLI for single-note testing
-run_stress_tests.py    # Stress test runner
+  run_samples.py       # Batch runner: sample JSONs through full pipeline
+  run_llm_test.py      # CLI for single-note testing
+  run_stress_tests.py  # Stress test runner
 ```
 
 ## Supported Directives
@@ -91,7 +91,7 @@ print(result.model_dump())
 Process all 10 sample JSONs through the full pipeline (LLM → guardrails → optimizer):
 
 ```bash
-python run_samples.py
+python tests/run_samples.py
 ```
 
 Each sample is a complete `ScenarioRequest` with operator notes, 24-hour demand/solar/tariff data, and battery config. The runner outputs optimization results and replay validation status.
@@ -100,20 +100,20 @@ Each sample is a complete `ScenarioRequest` with operator notes, 24-hour demand/
 
 ```bash
 # Single note
-python run_llm_test.py -n "No charging from 2 PM to 5 PM."
+python tests/run_llm_test.py -n "No charging from 2 PM to 5 PM."
 
 # Multiple notes
-python run_llm_test.py -n "Solar drops to 20%." -n "Battery reserve at least 100 kWh."
+python tests/run_llm_test.py -n "Solar drops to 20%." -n "Battery reserve at least 100 kWh."
 ```
 
 ## Stress Tests
 
 ```bash
 # Run all 62 tests
-python run_stress_tests.py
+python tests/run_stress_tests.py
 
 # Run specific category (1-7)
-python run_stress_tests.py --category 3
+python tests/run_stress_tests.py --category 3
 ```
 
 ### Categories
