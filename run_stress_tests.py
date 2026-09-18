@@ -50,13 +50,16 @@ def main() -> None:
         stream=sys.stderr,
     )
 
-    api_key = os.environ.get("GROQ_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
-    if not api_key:
-        print("ERROR: Set GROQ_API_KEY", file=sys.stderr)
-        sys.exit(1)
+    # api_key = os.environ.get("GROQ_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
+    # if not api_key:
+    #     print("ERROR: Set GROQ_API_KEY", file=sys.stderr)
+    #     sys.exit(1)
+    api_key = "not-needed"
 
-    base_url = args.base_url or os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-    model = args.model or os.environ.get("LLM_MODEL", "openai/gpt-oss-20b")
+    # base_url = args.base_url or os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+    # model = args.model or os.environ.get("LLM_MODEL", "openai/gpt-oss-20b")
+    base_url = args.base_url or "http://0.0.0.0:8080/v1"
+    model = args.model or "/models/Qwen3-14B-Q5_K_M.gguf"
 
     client = LLMClient(api_key=api_key, base_url=base_url, model=model, timeout=30.0)
     interpreter = LLMInterpreter(client=client, max_retries=1, max_tokens=1200)

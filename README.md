@@ -44,11 +44,13 @@ run_stress_tests.py    # Stress test runner
 ## Environment Variables
 
 ```bash
-export GROQ_API_KEY="your-groq-api-key"
-# Optional overrides:
+# Local model (default)
+# No env vars needed — uses http://0.0.0.0:8080/v1
+
+# Groq API (optional)
+# export GROQ_API_KEY="your-groq-api-key"
 # export LLM_MODEL="openai/gpt-oss-20b"
 # export LLM_BASE_URL="https://api.groq.com/openai/v1"
-# export LLM_TIMEOUT="8"
 ```
 
 ## Usage in FastAPI
