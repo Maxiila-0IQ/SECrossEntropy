@@ -21,7 +21,8 @@ logger = logging.getLogger("samples")
 
 def load_sample(path: Path) -> dict:
     with open(path) as f:
-        return json.load(f)
+        raw = json.load(f)
+    return raw.get("input", raw)
 
 
 def dict_to_scenario(data: dict) -> ScenarioRequest:
