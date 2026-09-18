@@ -12,10 +12,20 @@ llm/
   models.py            # Pydantic models (DirectiveType, DirectiveInterpretationResponse)
   errors.py            # Error hierarchy (LLMError, RetryableLLMError, etc.)
   prompts.py           # System prompt (gridwise-llm-v3) and user prompt builder
-  client.py            # DeepSeekClient — OpenAI-compatible API client
+  client.py            # LLMClient — OpenAI-compatible API client
   interpreter.py       # LLMInterpreter — retry, backoff, safe no_op fallback
+app/
+  main.py              # FastAPI endpoints (/health, /optimize-energy)
+  interpret.py         # Bridges llm/ module to app/ guardrails
+  guardrails.py        # Validates LLM output against constraints
+  constraints.py       # Builds optimization constraints from directives
+  optimize.py          # LP solver (PuLP)
+  schemas.py           # Pydantic request/response models
+  config.py            # Settings (Groq API, solver config)
 tests/
   stress_tests.py      # 62 stress tests across 7 categories
+  samples/             # 10 sample JSONs for end-to-end testing
+run_samples.py         # Batch runner: sample JSONs through full pipeline
 run_llm_test.py        # CLI for single-note testing
 run_stress_tests.py    # Stress test runner
 ```
@@ -31,27 +41,31 @@ run_stress_tests.py    # Stress test runner
 | `max_grid_window` | `{"hours": [...], "max_grid_kwh": float}` | Grid import cap per hour |
 | `no_op` | `null` | No supported energy directive |
 
+## Environment Variables
+
+```bash
+export GROQ_API_KEY="your-groq-api-key"
+# Optional overrides:
+# export LLM_MODEL="openai/gpt-oss-20b"
+# export LLM_BASE_URL="https://api.groq.com/openai/v1"
+# export LLM_TIMEOUT="8"
+```
+
 ## Usage in FastAPI
 
 ```python
-from llm import LLMInterpreter, DeepSeekClient
+from llm import LLMInterpreter, LLMClient
 
-# One-time setup
-client = DeepSeekClient(
-    api_key="your-deepseek-api-key",
-    base_url="https://api.deepseek.com",
-    model="deepseek-flash",
+client = LLMClient(
+    api_key="your-groq-api-key",
+    base_url="https://api.groq.com/openai/v1",
+    model="openai/gpt-oss-20b",
     timeout=30.0,
 )
 interpreter = LLMInterpreter(client=client, max_retries=1, max_tokens=1200)
 
-# In your endpoint
-operator_notes = ["Solar output drops to 20% from 1 PM to 3 PM."]
-result = interpreter.interpret(operator_notes, scenario_id="REQ-001")
-
-# Return as JSON
-response = result.model_dump()           # dict
-response_json = result.model_dump_json() # JSON string
+result = interpreter.interpret(["Solar drops to 20% from 1 PM to 3 PM."])
+print(result.model_dump())
 ```
 
 ### Response Format
@@ -70,10 +84,15 @@ response_json = result.model_dump_json() # JSON string
 }
 ```
 
-- `note_index` matches the input order (0..N-1)
-- `applies` is `false` only for `no_op`
-- `structured_adjustment` is `null` only for `no_op`
-- Errors automatically fall back to `no_op` — the endpoint never crashes
+## Sample Pipeline
+
+Process all 10 sample JSONs through the full pipeline (LLM → guardrails → optimizer):
+
+```bash
+python run_samples.py
+```
+
+Each sample is a complete `ScenarioRequest` with operator notes, 24-hour demand/solar/tariff data, and battery config. The runner outputs optimization results and replay validation status.
 
 ## CLI Testing
 
@@ -82,10 +101,7 @@ response_json = result.model_dump_json() # JSON string
 python run_llm_test.py -n "No charging from 2 PM to 5 PM."
 
 # Multiple notes
-python run_llm_test.py -n "Solar drops to 20% from 1 PM to 3 PM." -n "Battery reserve at least 100 kWh."
-
-# Use DeepSeek API
-python run_llm_test.py -n "Do not charge from 2 PM to 5 PM." --deepseek
+python run_llm_test.py -n "Solar drops to 20%." -n "Battery reserve at least 100 kWh."
 ```
 
 ## Stress Tests
@@ -96,9 +112,6 @@ python run_stress_tests.py
 
 # Run specific category (1-7)
 python run_stress_tests.py --category 3
-
-# Use DeepSeek API
-python run_stress_tests.py --deepseek
 ```
 
 ### Categories
