@@ -42,8 +42,8 @@ GRID_CAP_MOD_RE = re.compile(r"capped?\s*(?:at)?|limit(?:ed)?\s*(?:to|at)?|not\s
 NO_GRID_RE = re.compile(r"no\s+grid|no\s+import|no\s+draw|must\s+not\s+draw", re.IGNORECASE)
 
 SOLAR_RE = re.compile(r"solar|pv|panel|rooftop|photovoltaic", re.IGNORECASE)
-NO_CHARGE_RE = re.compile(r"charger|charging|do\s+not\s+charge|cannot\s+charge|can't\s+charge|isolated|no\s+charging|\bidle\b", re.IGNORECASE)
-NO_DISCHARGE_RE = re.compile(r"discharge|drawn\s+down|draw\s+down|drain|do\s+not\s+use\s+the\s+battery", re.IGNORECASE)
+NO_CHARGE_RE = re.compile(r"charger|charging|do\s+not\s+charge|cannot\s+charge|can't\s+charge|isolated|no\s+charging", re.IGNORECASE)
+NO_DISCHARGE_RE = re.compile(r"discharge|drawn\s+down|draw\s+down|drain|do\s+not\s+use\s+the\s+battery|\bidle\b", re.IGNORECASE)
 
 PAIR_CONNECTOR_RE = re.compile(r"(?i)^[\s]*(?:\b(?:to|until|through|and)\b|from|between|[>\-–])?[\s]*(?:the|at)?[\s]*(?:to\b|until\b|through\b|and\b|[>\-–]|from|between)?[\s]*$")
 

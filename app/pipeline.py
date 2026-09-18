@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import re
+import threading
 import time
 
 from app.config import settings
@@ -16,6 +17,7 @@ logger = logging.getLogger("gridwise.interpret")
 
 _prompt_cache: dict[str, list[dict]] = {}
 _CACHE_MAX = 256
+_cache_lock = threading.Lock()
 
 _CAPACITY_PCT_RE = re.compile(
     r"(\d+(?:\.\d+)?)\s*%\s*(?:of\s+)?(?:the\s+)?battery'?s?\s+capacity",
@@ -95,7 +97,8 @@ async def interpret_notes(
 ) -> tuple[list[DirectiveEntry], str]:
     n = len(notes)
 
-    cached = _prompt_cache.get(_cache_key(notes))
+    with _cache_lock:
+        cached = _prompt_cache.get(_cache_key(notes))
     if cached is not None:
         entries, _ = validate_entries(cached, n, battery)
         return entries, "llm"
@@ -110,7 +113,7 @@ async def interpret_notes(
     try:
         result = await asyncio.wait_for(
             asyncio.to_thread(interpreter.interpret, notes, scenario_id=scenario_id),
-            timeout=settings.LLM_TIMEOUT + 2,
+            timeout=25,
         )
     except asyncio.TimeoutError:
         logger.warning("LLM call timed out; using fallback parser")
@@ -124,8 +127,9 @@ async def interpret_notes(
 
     entries, errors = validate_entries(raw_list, n, battery)
     if not errors:
-        if len(_prompt_cache) < _CACHE_MAX:
-            _prompt_cache[_cache_key(notes)] = raw_list
+        with _cache_lock:
+            if len(_prompt_cache) < _CACHE_MAX:
+                _prompt_cache[_cache_key(notes)] = raw_list
         return entries, "llm"
 
     logger.info("LLM output had errors %s; using fallback", errors)

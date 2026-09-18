@@ -1,0 +1,63 @@
+{
+  "id": "SAMPLE-15",
+  "label": "All distractor notes",
+  "input": {
+    "scenario_id": "SAMPLE-15",
+    "operator_notes": [
+      "The water pump maintenance is scheduled for next Tuesday.",
+      "Please update the visitor parking passes for the new contractors."
+    ],
+    "hours": [
+      {"hour": 0, "demand_kwh": 88, "solar_kwh": 0, "tariff_bdt_per_kwh": 6},
+      {"hour": 1, "demand_kwh": 82, "solar_kwh": 0, "tariff_bdt_per_kwh": 5},
+      {"hour": 2, "demand_kwh": 78, "solar_kwh": 0, "tariff_bdt_per_kwh": 5},
+      {"hour": 3, "demand_kwh": 78, "solar_kwh": 0, "tariff_bdt_per_kwh": 4},
+      {"hour": 4, "demand_kwh": 82, "solar_kwh": 0, "tariff_bdt_per_kwh": 5},
+      {"hour": 5, "demand_kwh": 95, "solar_kwh": 0, "tariff_bdt_per_kwh": 6},
+      {"hour": 6, "demand_kwh": 112, "solar_kwh": 8, "tariff_bdt_per_kwh": 8},
+      {"hour": 7, "demand_kwh": 132, "solar_kwh": 28, "tariff_bdt_per_kwh": 10},
+      {"hour": 8, "demand_kwh": 152, "solar_kwh": 58, "tariff_bdt_per_kwh": 12},
+      {"hour": 9, "demand_kwh": 168, "solar_kwh": 98, "tariff_bdt_per_kwh": 14},
+      {"hour": 10, "demand_kwh": 178, "solar_kwh": 138, "tariff_bdt_per_kwh": 16},
+      {"hour": 11, "demand_kwh": 182, "solar_kwh": 168, "tariff_bdt_per_kwh": 16},
+      {"hour": 12, "demand_kwh": 188, "solar_kwh": 182, "tariff_bdt_per_kwh": 15},
+      {"hour": 13, "demand_kwh": 182, "solar_kwh": 172, "tariff_bdt_per_kwh": 14},
+      {"hour": 14, "demand_kwh": 172, "solar_kwh": 142, "tariff_bdt_per_kwh": 13},
+      {"hour": 15, "demand_kwh": 168, "solar_kwh": 92, "tariff_bdt_per_kwh": 14},
+      {"hour": 16, "demand_kwh": 172, "solar_kwh": 48, "tariff_bdt_per_kwh": 18},
+      {"hour": 17, "demand_kwh": 188, "solar_kwh": 12, "tariff_bdt_per_kwh": 22},
+      {"hour": 18, "demand_kwh": 208, "solar_kwh": 0, "tariff_bdt_per_kwh": 28},
+      {"hour": 19, "demand_kwh": 218, "solar_kwh": 0, "tariff_bdt_per_kwh": 30},
+      {"hour": 20, "demand_kwh": 208, "solar_kwh": 0, "tariff_bdt_per_kwh": 26},
+      {"hour": 21, "demand_kwh": 172, "solar_kwh": 0, "tariff_bdt_per_kwh": 18},
+      {"hour": 22, "demand_kwh": 132, "solar_kwh": 0, "tariff_bdt_per_kwh": 10},
+      {"hour": 23, "demand_kwh": 102, "solar_kwh": 0, "tariff_bdt_per_kwh": 7}
+    ],
+    "battery": {
+      "capacity_kwh": 200,
+      "initial_energy_kwh": 100,
+      "minimum_energy_kwh": 30,
+      "max_charge_kwh_per_hour": 50,
+      "max_discharge_kwh_per_hour": 50
+    }
+  },
+  "expected_output": {
+    "scenario_id": "SAMPLE-15",
+    "directive_interpretation": [
+      {
+        "note_index": 0,
+        "applies": false,
+        "directive_type": "no_op",
+        "structured_adjustment": null,
+        "explanation": "No energy-schedule directive."
+      },
+      {
+        "note_index": 1,
+        "applies": false,
+        "directive_type": "no_op",
+        "structured_adjustment": null,
+        "explanation": "No energy-schedule directive."
+      }
+    ]
+  }
+}
