@@ -16,7 +16,7 @@ from llm.prompts import PROMPT_VERSION, SYSTEM_PROMPT, build_user_prompt
 
 logger = logging.getLogger(__name__)
 
-_RETRY_BACKOFF_SECONDS = 1.0
+_BASE_BACKOFF = 1.0
 
 
 def _safe_no_op_response(note_count: int) -> DirectiveInterpretationResponse:
@@ -60,6 +60,10 @@ class LLMInterpreter:
         scenario_id: str = "",
     ) -> DirectiveInterpretationResponse:
         note_count = len(operator_notes)
+
+        if note_count == 0:
+            return _safe_no_op_response(0)
+
         user_prompt = build_user_prompt(operator_notes)
 
         logger.info(
@@ -77,6 +81,7 @@ class LLMInterpreter:
         last_error: Exception | None = None
 
         for attempt in range(self._max_retries + 1):
+            backoff = _BASE_BACKOFF * (2 ** attempt)
             t0 = time.perf_counter()
             try:
                 content, usage = self._client.parse(
@@ -123,7 +128,7 @@ class LLMInterpreter:
                     attempt,
                 )
                 if attempt < self._max_retries:
-                    time.sleep(_RETRY_BACKOFF_SECONDS)
+                    time.sleep(backoff)
 
             except json.JSONDecodeError as exc:
                 last_error = exc
@@ -134,7 +139,7 @@ class LLMInterpreter:
                     exc,
                 )
                 if attempt < self._max_retries:
-                    time.sleep(_RETRY_BACKOFF_SECONDS)
+                    time.sleep(backoff)
 
             except ValidationError as exc:
                 last_error = exc
@@ -152,7 +157,7 @@ class LLMInterpreter:
                         err["type"],
                     )
                 if attempt < self._max_retries:
-                    time.sleep(_RETRY_BACKOFF_SECONDS)
+                    time.sleep(backoff)
 
             except RetryableLLMError as exc:
                 last_error = exc
@@ -163,8 +168,8 @@ class LLMInterpreter:
                     exc,
                 )
                 if attempt < self._max_retries:
-                    logger.debug("retry_backoff scenario=%s sleep=%.1f", scenario_id, _RETRY_BACKOFF_SECONDS)
-                    time.sleep(_RETRY_BACKOFF_SECONDS)
+                    logger.debug("retry_backoff scenario=%s sleep=%.1f", scenario_id, backoff)
+                    time.sleep(backoff)
 
             except PermanentLLMError as exc:
                 logger.error(
@@ -173,6 +178,18 @@ class LLMInterpreter:
                     exc,
                 )
                 return _safe_no_op_response(note_count)
+
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "llm_unexpected_error scenario=%s attempt=%d type=%s error=%s",
+                    scenario_id,
+                    attempt,
+                    type(exc).__name__,
+                    exc,
+                )
+                if attempt < self._max_retries:
+                    time.sleep(backoff)
 
         logger.error(
             "llm_all_retries_exhausted scenario=%s last_error=%s",

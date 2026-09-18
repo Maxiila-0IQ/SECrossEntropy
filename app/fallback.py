@@ -45,7 +45,6 @@ SOLAR_RE = re.compile(r"solar|pv|panel|rooftop|photovoltaic", re.IGNORECASE)
 NO_CHARGE_RE = re.compile(r"charger|charging|do\s+not\s+charge|cannot\s+charge|can't\s+charge|isolated|no\s+charging|\bidle\b", re.IGNORECASE)
 NO_DISCHARGE_RE = re.compile(r"discharge|drawn\s+down|draw\s+down|drain|do\s+not\s+use\s+the\s+battery", re.IGNORECASE)
 
-CONNECTOR_RE = re.compile(r"(?i)(?:\bto\b|\buntil\b|\bthrough\b|\bfrom\b.*?\b(?:to|until|through)\b|\bbetween\b.*?\band\b|-)")
 PAIR_CONNECTOR_RE = re.compile(r"(?i)^[\s]*(?:\b(?:to|until|through|and)\b|from|between|[>\-–])?[\s]*(?:the|at)?[\s]*(?:to\b|until\b|through\b|and\b|[>\-–]|from|between)?[\s]*$")
 
 
@@ -57,7 +56,6 @@ def _find_tokens(text: str) -> list[dict]:
         is24h = False
         if m.group(1) is not None:
             hour = int(m.group(1))
-            # Skip numbers that are part of a longer quantity (e.g. "15" in "150").
             prev = text[m.start() - 1] if m.start() > 0 else ""
             nxt = text[m.end()] if m.end() < len(text) else ""
             if prev.isdigit():
@@ -129,8 +127,7 @@ def _extract_window(text: str) -> tuple[int, int] | None:
         sb = b["hour"] + 12 if b["hour"] <= 11 and sa >= 12 else b["hour"]
 
     if sb <= sa:
-        sa2, sb2 = sa, sb
-        return sa2, sb2 + 24
+        return sa, sb + 24
     return sa, sb
 
 
@@ -140,10 +137,6 @@ def _window_hours(sa: int, sb: int) -> list[int]:
     else:
         hours = list(range(sa, sb))
     return sorted(set(hours))
-
-
-def _intervals(hours: list[int]) -> list[int]:
-    return list(set(hours))
 
 
 def _extract_percent(text: str) -> float | None:
@@ -176,7 +169,6 @@ def _solar_factor(text: str) -> float:
         return round(p, 6)
     if REDUCTION_KW.search(text):
         return round(1.0 - p, 6)
-    # default: treat a plain percentage as fraction remaining
     return round(p, 6)
 
 
@@ -185,12 +177,11 @@ def parse_note(note: str, note_index: int, capacity_kwh: float | None = None) ->
     window = _extract_window(text)
     hours = _window_hours(*window) if window else None
 
-    if hours and len(hours) > 23:
+    if hours and len(hours) == 24:
         hours = None
 
     lower = text.lower()
 
-    # priority 1: reserve
     if RESERVE_RE.search(text) and ("battery" in lower or "reserve" in lower or "below" in lower or "above" in lower):
         qty = _extract_quantity(text)
         if qty is None:
@@ -200,13 +191,12 @@ def parse_note(note: str, note_index: int, capacity_kwh: float | None = None) ->
         if qty is not None:
             return _entry(note_index, True, "minimum_battery_reserve",
                           {"hours": hours or _scan_hours(text), "minimum_energy_kwh": qty},
-                          "Minimum battery reserve inferred from operator note.", text)
+                          "Minimum battery reserve inferred from operator note.")
         if "reserve" in lower and hours:
             return _entry(note_index, True, "minimum_battery_reserve",
                           {"hours": hours, "minimum_energy_kwh": 0.0},
-                          "Battery reserve window without explicit quantity.", text)
+                          "Battery reserve window without explicit quantity.")
 
-    # priority 2: grid cap
     if GRID_CAP_RE.search(text) and GRID_CAP_MOD_RE.search(text):
         h = hours or _scan_hours(text)
         if NO_GRID_RE.search(text):
@@ -216,28 +206,25 @@ def parse_note(note: str, note_index: int, capacity_kwh: float | None = None) ->
             cap = q if q is not None else 0.0
         return _entry(note_index, True, "max_grid_window",
                       {"hours": h, "max_grid_kwh": cap},
-                      "Grid import cap inferred from operator note.", text)
+                      "Grid import cap inferred from operator note.")
 
-    # priority 3: solar
     if SOLAR_RE.search(text):
         h = hours or _scan_hours(text)
         return _entry(note_index, True, "solar_reduction",
                       {"hours": h, "factor": _solar_factor(text)},
-                      "Solar output reduction inferred from operator note.", text)
+                      "Solar output reduction inferred from operator note.")
 
-    # priority 4: no charge (includes the idle policy)
     if NO_CHARGE_RE.search(text):
         return _entry(note_index, True, "no_charge_window",
                       {"hours": hours or _scan_hours(text)},
-                      "Battery charging prohibited in window (idle/disconnect policy).", text)
+                      "Battery charging prohibited in window (idle/disconnect policy).")
 
-    # priority 5: no discharge (includes the idle policy)
     if NO_DISCHARGE_RE.search(text):
         return _entry(note_index, True, "no_discharge_window",
                       {"hours": hours or _scan_hours(text)},
-                      "Battery discharging prohibited (or kept idle) in window.", text)
+                      "Battery discharging prohibited (or kept idle) in window.")
 
-    return _entry(note_index, False, "no_op", None, "No energy-schedule directive.", text)
+    return _entry(note_index, False, "no_op", None, "No energy-schedule directive.")
 
 
 def _scan_hours(text: str) -> list[int]:
@@ -247,7 +234,7 @@ def _scan_hours(text: str) -> list[int]:
     return list(range(24))
 
 
-def _entry(note_index, applies, dtype, adj, explanation, text) -> dict:
+def _entry(note_index, applies, dtype, adj, explanation) -> dict:
     return {
         "note_index": note_index,
         "applies": applies,

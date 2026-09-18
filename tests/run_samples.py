@@ -3,12 +3,10 @@
 import asyncio
 import json
 import logging
-import os
 import sys
 import time
 from pathlib import Path
 
-from app.config import settings
 from app.schemas import ScenarioRequest
 from app.interpret import interpret_notes
 from app.constraints import build_constraints
@@ -109,13 +107,6 @@ async def main():
         format="%(name)s %(levelname)s %(message)s",
         stream=sys.stderr,
     )
-
-    # api_key = os.environ.get("GROQ_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
-    # if api_key:
-    #     settings.GROQ_API_KEY = api_key
-    # else:
-    #     logger.info("No GROQ_API_KEY; interpret_notes will use fallback parser")
-    pass
 
     print(f"Processing {len(sample_files)} samples...", file=sys.stderr)
     print(file=sys.stderr)

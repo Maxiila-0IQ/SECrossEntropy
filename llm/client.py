@@ -12,19 +12,16 @@ from llm.errors import EmptyLLMContentError, PermanentLLMError, RetryableLLMErro
 logger = logging.getLogger(__name__)
 
 _RETRYABLE_STATUS_CODES = {429, 500, 503}
-_PERMANENT_STATUS_CODES = {400, 401, 402, 422}
+_PERMANENT_STATUS_CODES = {400, 401, 402, 403, 422}
 
 _MD_JSON_BLOCK = re.compile(r"```(?:json)?\s*\n?(.*?)\n?\s*```", re.DOTALL)
 
 
 def _strip_markdown_json(raw: str) -> str:
-    """Strip markdown code fences that some models wrap around JSON."""
     stripped = raw.strip()
-    # Try fullmatch first (clean case: only a code block)
     match = _MD_JSON_BLOCK.fullmatch(stripped)
     if match:
         return match.group(1).strip()
-    # Fallback: search for a code block anywhere in the content
     match = _MD_JSON_BLOCK.search(stripped)
     if match:
         return match.group(1).strip()
@@ -83,6 +80,9 @@ class LLMClient:
             logger.debug("llm_api_exception type=%s", type(exc).__name__)
             self._raise_mapped(exc)
             raise  # unreachable
+
+        if not completion.choices:
+            raise EmptyLLMContentError("LLM returned no choices")
 
         content = completion.choices[0].message.content or ""
         usage = completion.usage

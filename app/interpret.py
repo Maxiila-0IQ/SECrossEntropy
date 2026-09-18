@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import re
 import time
 
 from app.config import settings
@@ -14,6 +15,15 @@ from llm import LLMClient, LLMInterpreter
 logger = logging.getLogger("gridwise.interpret")
 
 _prompt_cache: dict[str, list[dict]] = {}
+_CACHE_MAX = 256
+
+_CAPACITY_PCT_RE = re.compile(
+    r"(\d+(?:\.\d+)?)\s*%\s*(?:of\s+)?(?:the\s+)?battery'?s?\s+capacity",
+    re.IGNORECASE,
+)
+_CAPACITY_PCT_SPLIT_RE = re.compile(
+    r"(\d+(?:\.\d+)?)\s*%\b[^.]*\bcapacity\b", re.IGNORECASE,
+)
 
 
 def _cache_key(notes: list[str]) -> str:
@@ -23,7 +33,7 @@ def _cache_key(notes: list[str]) -> str:
 
 def _build_client() -> LLMClient:
     return LLMClient(
-        api_key=settings.GROQ_API_KEY or "not-needed",
+        api_key=settings.DEEPSEEK_API_KEY or "not-needed",
         base_url=settings.LLM_BASE_URL,
         model=settings.LLM_MODEL,
         timeout=settings.LLM_TIMEOUT,
@@ -38,58 +48,39 @@ def _build_interpreter() -> LLMInterpreter:
     )
 
 
-_CAPACITY_PCT_RE = None
-try:
-    import re
-    _CAPACITY_PCT_RE = re.compile(
-        r"(\d+(?:\.\d+)?)\s*%\s*(?:of\s+)?(?:the\s+)?battery'?s?\s+capacity",
-        re.IGNORECASE,
-    )
-    _CAPACITY_PCT_SPLIT_RE = re.compile(
-        r"(\d+(?:\.\d+)?)\s*%\b[^.]*\bcapacity\b", re.IGNORECASE,
-    )
-except Exception:
-    pass
-
-
-def _resolve_percentage_of_capacity(entries, notes: list[str], battery):
+def _resolve_percentage_of_capacity(entries: list[dict], notes: list[str], battery) -> list[dict]:
     """Resolve '50% of battery capacity' to actual kWh."""
     capacity = getattr(battery, "capacity_kwh", None)
     if not capacity or capacity <= 0:
         return entries
-    patched = []
     for entry in entries:
-        adj = getattr(entry, "structured_adjustment", None)
-        if (getattr(entry, "directive_type", None) == "minimum_battery_reserve"
-                and isinstance(adj, dict)):
-            idx = getattr(entry, "note_index", None)
+        adj = entry.get("structured_adjustment")
+        if entry.get("directive_type") == "minimum_battery_reserve" and isinstance(adj, dict):
+            idx = entry.get("note_index")
             if isinstance(idx, int) and 0 <= idx < len(notes):
                 text = notes[idx]
-                m = None
-                if _CAPACITY_PCT_RE:
-                    m = _CAPACITY_PCT_RE.search(text) or _CAPACITY_PCT_SPLIT_RE.search(text)
+                m = _CAPACITY_PCT_RE.search(text) or _CAPACITY_PCT_SPLIT_RE.search(text)
                 if m:
                     try:
                         pct = float(m.group(1))
                         adj["minimum_energy_kwh"] = round(pct / 100.0 * capacity, 3)
                     except (TypeError, ValueError):
                         pass
-        patched.append(entry)
-    return patched
+    return entries
 
 
 def _entries_to_dicts(entries) -> list[dict]:
     """Convert llm DirectiveInterpretationEntry objects to raw dicts for guardrails."""
-    result = []
-    for e in entries:
-        result.append({
+    return [
+        {
             "note_index": e.note_index,
             "applies": e.applies,
             "directive_type": e.directive_type,
             "structured_adjustment": e.structured_adjustment,
             "explanation": e.explanation,
-        })
-    return result
+        }
+        for e in entries
+    ]
 
 
 def _directives_from_fallback(notes: list[str], battery) -> tuple[list[DirectiveEntry], str]:
@@ -109,8 +100,8 @@ async def interpret_notes(
         entries, _ = validate_entries(cached, n, battery)
         return entries, "llm"
 
-    if not settings.GROQ_API_KEY:
-        logger.info("No GROQ_API_KEY set; using fallback parser")
+    if not settings.DEEPSEEK_API_KEY:
+        logger.info("No DEEPSEEK_API_KEY set; using fallback parser")
         return _directives_from_fallback(notes, battery)
 
     interpreter = _build_interpreter()
@@ -133,10 +124,8 @@ async def interpret_notes(
 
     entries, errors = validate_entries(raw_list, n, battery)
     if not errors:
-        try:
+        if len(_prompt_cache) < _CACHE_MAX:
             _prompt_cache[_cache_key(notes)] = raw_list
-        except Exception:
-            pass
         return entries, "llm"
 
     logger.info("LLM output had errors %s; using fallback", errors)

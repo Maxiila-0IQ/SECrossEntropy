@@ -3,7 +3,6 @@
 import argparse
 import json
 import logging
-import os
 import sys
 
 from llm import LLMClient, LLMInterpreter
@@ -50,16 +49,11 @@ def main() -> None:
         stream=sys.stderr,
     )
 
-    # api_key = os.environ.get("GROQ_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
-    # if not api_key:
-    #     print("ERROR: Set GROQ_API_KEY", file=sys.stderr)
-    #     sys.exit(1)
-    api_key = "not-needed"
+    from app.config import settings
 
-    # base_url = args.base_url or os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-    # model = args.model or os.environ.get("LLM_MODEL", "openai/gpt-oss-20b")
-    base_url = args.base_url or "http://0.0.0.0:8080/v1"
-    model = args.model or "/models/Qwen3-14B-Q5_K_M.gguf"
+    api_key = settings.DEEPSEEK_API_KEY or "not-needed"
+    base_url = args.base_url or settings.LLM_BASE_URL
+    model = args.model or settings.LLM_MODEL
 
     client = LLMClient(api_key=api_key, base_url=base_url, model=model, timeout=30.0)
     interpreter = LLMInterpreter(client=client, max_retries=1, max_tokens=1200)
@@ -67,13 +61,13 @@ def main() -> None:
     tests = STRESS_TESTS
     if args.category is not None:
         category_ranges = {
-            1: (0, 29),   # Paraphrase families (29 tests)
-            2: (29, 35),  # Time edge cases (6 tests)
-            3: (35, 43),  # Solar factor traps (8 tests)
-            4: (43, 49),  # Charge vs discharge (6 tests)
-            5: (49, 55),  # Vague/insufficient (6 tests)
-            6: (55, 60),  # Adversarial (5 tests)
-            7: (60, 62),  # Multi-note (2 tests)
+            1: (0, 29),
+            2: (29, 35),
+            3: (35, 43),
+            4: (43, 49),
+            5: (49, 55),
+            6: (55, 60),
+            7: (60, 62),
         }
         start, end = category_ranges.get(args.category, (0, len(STRESS_TESTS)))
         tests = STRESS_TESTS[start:end]
@@ -135,7 +129,10 @@ def main() -> None:
 
     print(file=sys.stderr)
     print(f"{'='*60}", file=sys.stderr)
-    print(f"RESULTS: {passed}/{total} passed ({100*passed/total:.1f}%)", file=sys.stderr)
+    if total > 0:
+        print(f"RESULTS: {passed}/{total} passed ({100*passed/total:.1f}%)", file=sys.stderr)
+    else:
+        print(f"RESULTS: no tests", file=sys.stderr)
     print(f"{'='*60}", file=sys.stderr)
 
     if failures:
@@ -155,7 +152,7 @@ def main() -> None:
         "total": total,
         "passed": passed,
         "failed": failed,
-        "pass_rate": round(100 * passed / total, 1),
+        "pass_rate": round(100 * passed / total, 1) if total > 0 else 0.0,
         "errors": {
             "classification": classification_errors,
             "hours": hour_errors,

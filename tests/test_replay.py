@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from app.schemas import ScenarioRequest, DirectiveEntry, HourPlan
+from app.schemas import DirectiveEntry, HourPlan
 from app.constraints import build_constraints
 from app.optimize import solve_and_build
 from app.replay import validate_plan

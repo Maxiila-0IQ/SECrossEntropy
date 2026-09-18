@@ -94,7 +94,7 @@ def _solve_pulp(cons: Constraints, battery, use_slacks: bool) -> tuple:
 
 
 def _solve_pulp_peak(cons: Constraints, battery, cost_bound: float) -> tuple:
-    """Phase 2: minimize peak grid draw g[h] ≤ P subject to cost ≤ cost_bound."""
+    """Phase 2: minimize peak grid draw g[h] <= P subject to cost <= cost_bound."""
     prob = pulp.LpProblem("gridwise_peak", pulp.LpMinimize)
     H = MAX_HOURS
     g = [pulp.LpVariable(f"g{h}", lowBound=0) for h in range(H)]
@@ -132,12 +132,7 @@ def _solve_pulp_peak(cons: Constraints, battery, cost_bound: float) -> tuple:
 
 
 def _solve_scipy(cons: Constraints, battery, use_slacks: bool, cost_bound: float | None = None):
-    """Build the same LP as dense matrices for scipy HiGHS.
-
-    With `cost_bound` given, runs the peak-minimization phase: minimize the
-    max grid draw P subject to total cost <= cost_bound + 1e-6.
-    Returns (nets, total_cost) on success, or None.
-    """
+    """Build the same LP as dense matrices for scipy HiGHS."""
     if linprog is None:
         return None
     H = MAX_HOURS
@@ -145,11 +140,13 @@ def _solve_scipy(cons: Constraints, battery, use_slacks: bool, cost_bound: float
     if cost_bound is not None:
         idx_P = n
         n += 1
-    idx_g = lambda h: h * 5 + 0
-    idx_s = lambda h: h * 5 + 1
-    idx_c = lambda h: h * 5 + 2
-    idx_d = lambda h: h * 5 + 3
-    idx_E = lambda h: h * 5 + 4
+
+    def idx_g(h): return h * 5
+    def idx_s(h): return h * 5 + 1
+    def idx_c(h): return h * 5 + 2
+    def idx_d(h): return h * 5 + 3
+    def idx_E(h): return h * 5 + 4
+
     if use_slacks:
         sr_off = n
         sg_off = n + H
@@ -252,7 +249,7 @@ def _extract_nets(cons: Constraints, vars_: _Lp) -> list[float]:
 
 
 def _absorb_drift(nets: list[float], cons: Constraints, battery, initial: float) -> list[float]:
-    drift = initial + sum(nets) - initial
+    drift = sum(nets)
     if abs(drift) <= 1e-6:
         return nets
     H = MAX_HOURS

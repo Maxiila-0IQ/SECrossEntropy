@@ -2,7 +2,6 @@
 
 import argparse
 import logging
-import os
 import sys
 
 from llm import LLMClient, LLMInterpreter
@@ -82,16 +81,11 @@ def main() -> None:
         stream=sys.stderr,
     )
 
-    # api_key = os.environ.get("GROQ_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
-    # if not api_key:
-    #     print("ERROR: Set GROQ_API_KEY env var", file=sys.stderr)
-    #     sys.exit(1)
-    api_key = "not-needed"
+    from app.config import settings
 
-    # base_url = args.base_url or os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-    # model = args.model or os.environ.get("LLM_MODEL", "openai/gpt-oss-20b")
-    base_url = args.base_url or "http://0.0.0.0:8080/v1"
-    model = args.model or "/models/Qwen3-14B-Q5_K_M.gguf"
+    api_key = settings.DEEPSEEK_API_KEY or "not-needed"
+    base_url = args.base_url or settings.LLM_BASE_URL
+    model = args.model or settings.LLM_MODEL
 
     client = LLMClient(
         api_key=api_key,

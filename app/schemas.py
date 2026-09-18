@@ -2,6 +2,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from llm.models import DirectiveType
+
+BatteryAction = Literal["charge", "discharge", "idle"]
+
 
 class HourInput(BaseModel):
     hour: int = Field(ge=0, le=23)
@@ -51,18 +55,6 @@ class ScenarioRequest(BaseModel):
                 "must hold"
             )
         return self
-
-
-DirectiveType = Literal[
-    "solar_reduction",
-    "minimum_battery_reserve",
-    "no_charge_window",
-    "no_discharge_window",
-    "max_grid_window",
-    "no_op",
-]
-
-BatteryAction = Literal["charge", "discharge", "idle"]
 
 
 class DirectiveEntry(BaseModel):

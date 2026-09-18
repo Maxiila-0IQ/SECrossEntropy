@@ -31,7 +31,6 @@ def test_health(client):
 
 
 def test_valid_request_returns_200_and_structure(client):
-    # capped hours (0,1,22,23) must be servable by solar+battery, so keep demand low there
     demand = [50.0 if h in (0, 1, 22, 23) else 120.0 for h in range(24)]
     scenario = make_scenario(scenario_id="api-01", demand=demand,
                              notes=["No grid import from 10 PM until 2 AM."])
@@ -45,24 +44,21 @@ def test_valid_request_returns_200_and_structure(client):
     assert len(body["directive_interpretation"]) == 1
     assert body["directive_interpretation"][0]["directive_type"] == "max_grid_window"
     assert body["directive_interpretation"][0]["structured_adjustment"]["hours"] == [0, 1, 22, 23]
-    # checks zero grid in capped hours
     for h in (0, 1, 22, 23):
         assert [p for p in body["hourly_plan"] if p["hour"] == h][0]["grid_kwh"] <= 0.01
     assert body["total_grid_kwh"] == round(sum(p["grid_kwh"] for p in body["hourly_plan"]), 4)
     t = [h.tariff_bdt_per_kwh for h in sorted(scenario.hours, key=lambda x: x.hour)]
     assert body["total_cost_bdt"] == round(sum(p["grid_kwh"] * t[p["hour"]] for p in body["hourly_plan"]), 4)
-    # neutrality
     assert abs(body["hourly_plan"][23]["battery_energy_after_kwh"]
                - scenario.battery.initial_energy_kwh) < 0.01
 
 
 def test_unsorted_hours_handled(client):
-    hours = list(range(24))
     scenario = make_scenario(scenario_id="api-unsorted")
     payload = scenario.model_dump()
     payload["hours"] = [payload["hours"][i] for i in [23, 0, 5, 1, 2, 3, 4, 6, 7, 8, 9, 10,
-                                                      11, 12, 13, 14, 15, 16, 17, 18, 19,
-                                                      20, 21, 22]]
+                                                       11, 12, 13, 14, 15, 16, 17, 18, 19,
+                                                       20, 21, 22]]
     r = client.post("/optimize-energy", json=payload)
     assert r.status_code == 200
     assert [p["hour"] for p in r.json()["hourly_plan"]] == list(range(24))

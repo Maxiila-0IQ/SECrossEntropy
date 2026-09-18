@@ -1,6 +1,6 @@
 import pytest
 
-from app.schemas import ScenarioRequest, DirectiveEntry, HourPlan
+from app.schemas import ScenarioRequest, DirectiveEntry
 from app.constraints import build_constraints
 from app.optimize import solve_and_build
 from app.replay import validate_plan
@@ -29,7 +29,6 @@ def test_analytic_arbitrage_optimal_cost():
     assert violations == []
     assert result.totals["total_cost_bdt"] == pytest.approx(26500.0, abs=0.01)
     assert result.totals["total_grid_kwh"] == pytest.approx(2400.0, abs=0.01)
-    # 150 kWh of charging must be spread across the 8 cheap hours at 18.75/h -> min peak
     assert result.totals["peak_grid_kwh"] == pytest.approx(118.75, abs=0.01)
 
 
@@ -67,7 +66,7 @@ def test_multiple_solar_reductions_stack():
     cons, result = solve_request(scenario, [d1, d2])
     assert result is not None
     h13 = [p for p in result.plan if p.hour == 13][0]
-    assert h13.solar_used_kwh <= 5.0 + 0.01  # 20 * 0.5 * 0.5
+    assert h13.solar_used_kwh <= 5.0 + 0.01
 
 
 def test_reserve_honored():
@@ -85,7 +84,6 @@ def test_reserve_honored():
 
 def test_no_discharge_window_honored():
     scenario = make_scenario()
-    # expensive late hours to entice discharge
     tariff = [12.0 if h < 20 else 40.0 for h in range(24)]
     scenario = make_scenario(scenario_id="ndw", tariff=tariff)
     d = DirectiveEntry(note_index=0, applies=True, directive_type="no_discharge_window",
@@ -118,7 +116,6 @@ def test_deterministic_repeatable():
 
 def test_baseline_is_valid_when_solver_cannot():
     scenario = make_scenario()
-    # force an impossible grid cap on every hour: cap 0 but demand 120, solar 20
     dummy_hours = list(range(24))
     d = DirectiveEntry(note_index=0, applies=True, directive_type="max_grid_window",
                        structured_adjustment={"hours": dummy_hours, "max_grid_kwh": 0.0},
@@ -132,7 +129,6 @@ def test_baseline_is_valid_when_solver_cannot():
                                    {"total_grid_kwh": base.total_grid_kwh,
                                     "total_cost_bdt": base.total_cost_bdt,
                                     "peak_grid_kwh": base.peak_grid_kwh})
-        # the reserve-less baseline violates the cap but stays structurally valid
         assert all(not v.startswith("neg") and "missing" not in v for v in violations)
 
 

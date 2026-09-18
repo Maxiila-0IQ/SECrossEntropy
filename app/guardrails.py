@@ -19,7 +19,7 @@ REQUIRED_KEYS = {
 }
 
 
-def _repair_hours(hours, n_expected=None) -> list[int] | None:
+def _repair_hours(hours) -> list[int] | None:
     if not isinstance(hours, list):
         return None
     cleaned = []
@@ -114,7 +114,6 @@ def validate_entries(raw_list, n_notes: int, battery) -> tuple[list[DirectiveEnt
             if ni not in best_by_index:
                 best_by_index[ni] = fixed
         else:
-            # demote, never drop
             best_by_index[ni] = {
                 "note_index": ni,
                 "applies": False,
@@ -143,5 +142,4 @@ def validate_entries(raw_list, n_notes: int, battery) -> tuple[list[DirectiveEnt
                 explanation=raw["explanation"],
             ))
 
-    # tri-state coherence enforced by construction above
     return entries, errors

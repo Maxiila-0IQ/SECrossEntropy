@@ -15,17 +15,6 @@ class Constraints:
     can_discharge: list[bool]
     grid_cap: list[float | None]
 
-    def clean(self) -> bool:
-        try:
-            for h in range(MAX_HOURS):
-                assert self.eff_solar[h] >= 0.0
-                assert self.min_energy[h] >= 0.0
-                cap = self.grid_cap[h]
-                assert cap is None or cap >= 0.0
-            return True
-        except AssertionError:
-            return False
-
 
 def build_constraints(scenario: ScenarioRequest, entries: list[DirectiveEntry]) -> Constraints:
     hours_sorted = sorted(scenario.hours, key=lambda x: x.hour)

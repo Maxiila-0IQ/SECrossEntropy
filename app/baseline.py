@@ -1,10 +1,4 @@
-from app.schemas import (
-    BatteryInput,
-    HourInput,
-    HourPlan,
-    OptimizeResponse,
-    ScenarioRequest,
-)
+from app.schemas import HourPlan, OptimizeResponse, ScenarioRequest
 
 R = lambda x: round(x, 4)
 
@@ -21,7 +15,7 @@ def build_plan_from_arrays(
     for h in range(24):
         net = nets[h]
         e = round(e_prev + net, 6)
-        need = demand[h] + max(net, 0.0) - max(-net, 0.0)
+        need = demand[h] + net
         solar_used = min(eff_solar[h], max(need, 0.0))
         grid = max(need - solar_used, 0.0)
         if net > 1e-9:

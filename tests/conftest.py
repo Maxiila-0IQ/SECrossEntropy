@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -60,14 +59,3 @@ def load_cases():
 @pytest.fixture
 def scenario():
     return make_scenario()
-
-
-@pytest.fixture
-def battery_kwargs():
-    return {
-        "capacity_kwh": 200.0,
-        "initial_energy_kwh": 80.0,
-        "minimum_energy_kwh": 10.0,
-        "max_charge_kwh_per_hour": 50.0,
-        "max_discharge_kwh_per_hour": 50.0,
-    }

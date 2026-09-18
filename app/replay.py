@@ -1,3 +1,5 @@
+import math
+
 from app.schemas import BatteryInput, ScenarioRequest
 from app.constraints import Constraints
 
@@ -33,9 +35,6 @@ def validate_plan(scenario: ScenarioRequest, cons: Constraints, plan, totals=Non
 
     demand = {h.hour: h.demand_kwh for h in scenario.hours}
     tariff = {h.hour: h.tariff_bdt_per_kwh for h in scenario.hours}
-    raw_solar = {h.hour: h.solar_kwh for h in scenario.hours}
-
-    import math
 
     for h in range(24):
         p = by_hour[h]
@@ -105,37 +104,4 @@ def validate_plan(scenario: ScenarioRequest, cons: Constraints, plan, totals=Non
         if abs(totals["peak_grid_kwh"] - recomputed_peak) > TOL:
             violations.append("peak_grid_kwh mismatch with recomputation")
 
-    return violations
-
-
-def _plan_total_grid(plan) -> float:
-    return round(sum(p.grid_kwh for p in plan), 4)
-
-
-def _plan_total_cost(plan, tariff) -> float:
-    return round(sum(p.grid_kwh * tariff[p.hour] for p in plan), 4)
-
-
-def validate_interpretation(entries, n_notes: int) -> list[str]:
-    violations: list[str] = []
-    if len(entries) != n_notes:
-        violations.append(f"interpretation has {len(entries)} entries, expected {n_notes}")
-    for i, e in enumerate(entries):
-        if e.note_index != i:
-            violations.append(f"note_index {e.note_index} != position {i}")
-            continue
-        if e.directive_type not in VALID_DIRECTIVE_TYPES:
-            violations.append(f"note {i}: bad directive_type")
-        if e.applies != (e.directive_type != "no_op"):
-            violations.append(f"note {i}: applies/tri-state incoherent")
-        if (e.structured_adjustment is None) != (e.directive_type == "no_op"):
-            violations.append(f"note {i}: adjustment/tri-state incoherent")
-        adj = e.structured_adjustment
-        if e.directive_type == "solar_reduction":
-            if adj and not (0.0 <= adj.get("factor", -1) <= 1.0):
-                violations.append(f"note {i}: factor out of range")
-        if isinstance(adj, dict) and "hours" in adj:
-            hrs = adj["hours"]
-            if hrs != sorted(set(hrs)) or not all(0 <= x <= 23 for x in hrs):
-                violations.append(f"note {i}: hours not unique/ascending/in-range")
     return violations

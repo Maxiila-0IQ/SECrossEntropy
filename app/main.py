@@ -3,7 +3,7 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -34,14 +34,15 @@ app = FastAPI(title="GridWise Energy Optimizer", lifespan=lifespan)
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request, exc):
-    return JSONResponse(status_code=400, content={"error": "invalid request: " + "; ".join(
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    msg = "invalid request: " + "; ".join(
         str(e["loc"][-1]) + ": " + str(e["msg"]) for e in exc.errors()
-    )[:500]})
+    )[:500]
+    return JSONResponse(status_code=400, content={"error": msg})
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request, exc):
+async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception("unhandled exception")
     return JSONResponse(status_code=500, content={"error": "internal server error"})
 

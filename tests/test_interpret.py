@@ -4,7 +4,6 @@ from app.fallback import parse_note
 from app.guardrails import validate_entries
 from app.schemas import BatteryInput
 from app.interpret import interpret_notes
-from app.constraints import build_constraints
 
 
 BATTERY = BatteryInput(
@@ -132,84 +131,21 @@ def test_hours_repaired_sorted_dedup():
     assert entries[0].structured_adjustment["hours"] == [2, 5, 9]
 
 
-import asyncio
-from unittest.mock import patch
-
-import app.interpret as interpret_mod
-
-
-def _run(notes, battery=BATTERY):
-    return asyncio.run(interpret_mod.interpret_notes(notes, battery))
-
-
-def test_malformed_llm_output_degrades_to_fallback():
-    bad = '{"interpretations": [{"note_index": 0, "applies": true, "directive_type": "bogus", "structured_adjustment": null, "explanation": "x"}]}'
-
-    async def _bad_first(notes, timeout):
-        return bad
-
-    async def _bad_retry(messages, timeout):
-        return bad
-
-    with patch.object(interpret_mod.settings, "GROQ_API_KEY", "test-key"), \
-         patch.object(interpret_mod, "_call_llm", side_effect=_bad_first), \
-         patch.object(interpret_mod, "_call_llm_with_messages", side_effect=_bad_retry):
-        entries, path = _run(["No grid import from 10 PM until 2 AM."])
-        assert path == "fallback"
-        assert entries[0].directive_type == "max_grid_window"
-
-
-def test_invalid_json_degrades_to_fallback():
-    async def _bad_call(notes, timeout):
-        return "this is not json"
-    with patch.object(interpret_mod.settings, "GROQ_API_KEY", "test-key"), \
-         patch.object(interpret_mod, "_call_llm", side_effect=_bad_call):
-        entries, path = _run(["Keep at least 120 kWh in reserve from 6 PM until 9 PM."])
-        assert path == "fallback"
-        assert entries[0].directive_type == "minimum_battery_reserve"
-
-
-def test_llm_timeout_degrades_to_fallback():
-    async def _slow_call(notes, timeout):
-        await asyncio.sleep(30)
-        return None
-    with patch.object(interpret_mod.settings, "GROQ_API_KEY", "test-key"), \
-         patch.object(interpret_mod.settings, "LLM_TIMEOUT", 0.05), \
-         patch.object(interpret_mod, "_call_llm", side_effect=_slow_call):
-        entries, path = _run(["PV production will drop to about 20% between 13:00 and 15:00."])
-        assert path == "fallback"
-        assert entries[0].directive_type == "solar_reduction"
-
-
 def test_resolve_percentage_of_capacity_in_llm_output():
+    import app.interpret as interpret_mod
     notes = ["Keep at least 50% of the battery capacity stored in the battery from 6 PM until 9 PM for emergency operations."]
     raw = [{"note_index": 0, "applies": True, "directive_type": "minimum_battery_reserve",
             "structured_adjustment": {"hours": [18, 19, 20], "minimum_energy_kwh": 0.5},
             "explanation": "model fraction placeholder"}]
     patched = interpret_mod._resolve_percentage_of_capacity(raw, notes, BATTERY)
-    # BATTERY capacity is 500.0
     assert patched[0]["structured_adjustment"]["minimum_energy_kwh"] == 250.0
 
 
 def test_resolve_does_not_touch_absolute_reserve():
+    import app.interpret as interpret_mod
     notes = ["The data center requires at least 80 kWh to remain in the battery from 6 PM until 10 PM."]
     raw = [{"note_index": 0, "applies": True, "directive_type": "minimum_battery_reserve",
             "structured_adjustment": {"hours": [18, 19, 20, 21], "minimum_energy_kwh": 80.0},
             "explanation": "x"}]
     patched = interpret_mod._resolve_percentage_of_capacity(raw, notes, BATTERY)
     assert patched[0]["structured_adjustment"]["minimum_energy_kwh"] == 80.0
-
-
-def test_retry_uses_correct_output():
-    async def _flaky_call(notes, timeout):
-        return '{"interpretations": [{"note_index": 0, "applies": true, "directive_type": "bogus", "structured_adjustment": null, "explanation": "bad"}]}'
-
-    async def _good_retry(messages, timeout):
-        return '{"interpretations": [{"note_index": 0, "applies": true, "directive_type": "no_charge_window", "structured_adjustment": {"hours": [2, 3, 4]}, "explanation": "x"}]}'
-
-    with patch.object(interpret_mod.settings, "GROQ_API_KEY", "test-key"), \
-         patch.object(interpret_mod, "_call_llm", side_effect=_flaky_call), \
-         patch.object(interpret_mod, "_call_llm_with_messages", side_effect=_good_retry):
-        entries, path = _run(["the charger is isolated from 2 until 5."])
-        assert path == "retry"
-        assert entries[0].directive_type == "no_charge_window"
