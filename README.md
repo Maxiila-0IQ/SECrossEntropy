@@ -145,19 +145,6 @@ The replay validator independently recomputes every constraint the judge checks:
 - End-of-day neutrality (E[23] = initial energy)
 - Totals recomputation (grid, cost, peak)
 
-## Testing
-
-```bash
-# End-to-end: 15 sample scenarios through full pipeline
-python tests/run_samples.py
-
-# Stress tests: 62 tests across 7 categories
-python tests/run_stress_tests.py
-
-# Single note via CLI
-python tests/run_llm_test.py -n "No charging from 2 PM to 5 PM."
-```
-
 ## Docker
 
 ```bash
@@ -185,4 +172,4 @@ curl http://localhost:8000/health
 | `LLM_MODEL` | `deepseek-flash` | Model identifier |
 | `LLM_BASE_URL` | `https://api.deepseek.com` | API base URL |
 | `LLM_TIMEOUT` | `8` | LLM call timeout (seconds) |
-| `SOLVER_BACKEND` | `pulp` | Solver: `pulp` or `scipy` |
+| `SOLVER_BACKEND` | `pulp` | Solver: `pulp` |
