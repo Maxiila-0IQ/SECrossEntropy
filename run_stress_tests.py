@@ -3,9 +3,10 @@
 import argparse
 import json
 import logging
+import os
 import sys
 
-from llm import DeepSeekClient, LLMInterpreter
+from llm import LLMClient, LLMInterpreter
 from tests.stress_tests import STRESS_TESTS
 
 NUMERIC_TOLERANCE = 0.01
@@ -32,7 +33,6 @@ def adjustment_equal(actual: dict | None, expected: dict | None, tol: float = NU
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run stress tests against the LLM interpreter.")
-    parser.add_argument("--deepseek", action="store_true", help="Use DeepSeek API.")
     parser.add_argument("--model", default=None, help="Model name override.")
     parser.add_argument("--base-url", default=None, help="API base URL override.")
     parser.add_argument("--category", type=int, default=None, help="Run only this category (1-7).")
@@ -50,20 +50,15 @@ def main() -> None:
         stream=sys.stderr,
     )
 
-    if args.deepseek:
-        import os
-        api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-        base_url = args.base_url or os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-        model = args.model or os.environ.get("DEEPSEEK_MODEL", "deepseek-flash")
-        if not api_key:
-            print("ERROR: Set DEEPSEEK_API_KEY", file=sys.stderr)
-            sys.exit(1)
-    else:
-        api_key = "not-needed"
-        base_url = args.base_url or "http://0.0.0.0:8080/v1"
-        model = args.model or "/models/Qwen3-14B-Q5_K_M.gguf"
+    api_key = os.environ.get("GROQ_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
+    if not api_key:
+        print("ERROR: Set GROQ_API_KEY", file=sys.stderr)
+        sys.exit(1)
 
-    client = DeepSeekClient(api_key=api_key, base_url=base_url, model=model, timeout=30.0)
+    base_url = args.base_url or os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+    model = args.model or os.environ.get("LLM_MODEL", "openai/gpt-oss-20b")
+
+    client = LLMClient(api_key=api_key, base_url=base_url, model=model, timeout=30.0)
     interpreter = LLMInterpreter(client=client, max_retries=1, max_tokens=1200)
 
     tests = STRESS_TESTS
@@ -85,7 +80,6 @@ def main() -> None:
     failed = 0
     failures = []
 
-    # Error categories
     classification_errors = 0
     hour_errors = 0
     numeric_errors = 0
@@ -116,7 +110,6 @@ def main() -> None:
                     ok = False
                     classification_errors += 1
                 elif exp_adj is not None and not adjustment_equal(e.structured_adjustment, exp_adj):
-                    # Determine error subtype
                     if e.structured_adjustment and exp_adj:
                         got_hours = set(e.structured_adjustment.get("hours", []))
                         exp_hours = set(exp_adj.get("hours", []))

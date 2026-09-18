@@ -6,7 +6,7 @@ import time
 
 from pydantic import ValidationError
 
-from llm.client import DeepSeekClient
+from llm.client import LLMClient
 from llm.errors import EmptyLLMContentError, PermanentLLMError, RetryableLLMError
 from llm.models import (
     DirectiveInterpretationEntry,
@@ -38,7 +38,7 @@ def _safe_no_op_response(note_count: int) -> DirectiveInterpretationResponse:
 class LLMInterpreter:
     def __init__(
         self,
-        client: DeepSeekClient,
+        client: LLMClient,
         max_retries: int = 1,
         max_tokens: int = 1200,
     ) -> None:

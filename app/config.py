@@ -8,7 +8,7 @@ class Settings:
     GROQ_API_KEY: str = os.getenv(
         "GROQ_API_KEY", os.getenv("GROQCLOUD_API_KEY", os.getenv("OPENAI_API_KEY", ""))
     )
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "openai/gpt-oss-120b")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
     LLM_BASE_URL: str = os.getenv(
         "LLM_BASE_URL", "https://api.groq.com/openai/v1"
     )

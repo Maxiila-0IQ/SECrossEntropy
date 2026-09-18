@@ -9,7 +9,7 @@ from app.schemas import DirectiveEntry
 from app.fallback import parse_notes as fallback_parse
 from app.guardrails import validate_entries
 
-from llm import DeepSeekClient, LLMInterpreter
+from llm import LLMClient, LLMInterpreter
 
 logger = logging.getLogger("gridwise.interpret")
 
@@ -21,8 +21,8 @@ def _cache_key(notes: list[str]) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
-def _build_client() -> DeepSeekClient:
-    return DeepSeekClient(
+def _build_client() -> LLMClient:
+    return LLMClient(
         api_key=settings.GROQ_API_KEY or "not-needed",
         base_url=settings.LLM_BASE_URL,
         model=settings.LLM_MODEL,

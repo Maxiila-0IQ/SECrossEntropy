@@ -30,7 +30,7 @@ def _strip_markdown_json(raw: str) -> str:
     return stripped
 
 
-class DeepSeekClient:
+class LLMClient:
     def __init__(
         self,
         api_key: str,
@@ -45,7 +45,7 @@ class DeepSeekClient:
             timeout=timeout,
         )
         logger.info(
-            "deepseek_client_init model=%s base_url=%s timeout=%.1f",
+            "llm_client_init model=%s base_url=%s timeout=%.1f",
             model,
             base_url,
             timeout,
@@ -58,7 +58,7 @@ class DeepSeekClient:
         max_tokens: int,
     ) -> tuple[str, CompletionUsage | None]:
         logger.debug(
-            "deepseek_parse_start model=%s max_tokens=%d",
+            "llm_parse_start model=%s max_tokens=%d",
             self._model,
             max_tokens,
         )
@@ -75,7 +75,7 @@ class DeepSeekClient:
                 extra_body={"thinking": {"type": "disabled"}},
             )
         except Exception as exc:
-            logger.debug("deepseek_api_exception type=%s", type(exc).__name__)
+            logger.debug("llm_api_exception type=%s", type(exc).__name__)
             self._raise_mapped(exc)
             raise  # unreachable
 
@@ -83,7 +83,7 @@ class DeepSeekClient:
         usage = completion.usage
 
         logger.debug(
-            "deepseek_parse_raw_content_len=%d content_preview=%s",
+            "llm_parse_raw_content_len=%d content_preview=%s",
             len(content),
             content[:200] if content else "<empty>",
         )
@@ -93,17 +93,17 @@ class DeepSeekClient:
         if not content.strip():
             raise EmptyLLMContentError("LLM returned empty content")
 
-        logger.debug("deepseek_parse_clean_content_len=%d", len(content))
+        logger.debug("llm_parse_clean_content_len=%d", len(content))
 
         return content, usage
 
     def _raise_mapped(self, exc: Exception) -> None:
         status = getattr(exc, "status_code", None)
         if status in _RETRYABLE_STATUS_CODES:
-            logger.debug("deepseek_retryable_status=%s", status)
+            logger.debug("llm_retryable_status=%s", status)
             raise RetryableLLMError(str(exc)) from exc
         if status in _PERMANENT_STATUS_CODES:
-            logger.debug("deepseek_permanent_status=%s", status)
+            logger.debug("llm_permanent_status=%s", status)
             raise PermanentLLMError(str(exc)) from exc
-        logger.debug("deepseek_unknown_error treating_as_retryable")
+        logger.debug("llm_unknown_error treating_as_retryable")
         raise RetryableLLMError(str(exc)) from exc

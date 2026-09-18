@@ -1,4 +1,4 @@
-from llm.client import DeepSeekClient
+from llm.client import LLMClient
 from llm.errors import (
     EmptyLLMContentError,
     LLMError,
@@ -14,7 +14,7 @@ from llm.models import (
 from llm.prompts import PROMPT_VERSION
 
 __all__ = [
-    "DeepSeekClient",
+    "LLMClient",
     "DirectiveInterpretationEntry",
     "DirectiveInterpretationResponse",
     "DirectiveType",

@@ -224,5 +224,8 @@ agent.md
 LLM.md
 LLM_EXAMPLES.md
 
+# Sample data
+tests/samples/
+
 # PDFs
 *.pdf

@@ -2,9 +2,10 @@
 
 import argparse
 import logging
+import os
 import sys
 
-from llm import DeepSeekClient, LLMInterpreter
+from llm import LLMClient, LLMInterpreter
 
 
 def parse_args() -> argparse.Namespace:
@@ -23,11 +24,6 @@ def parse_args() -> argparse.Namespace:
         default="CLI-001",
         metavar="ID",
         help="Scenario identifier (default: CLI-001).",
-    )
-    parser.add_argument(
-        "--deepseek",
-        action="store_true",
-        help="Use DeepSeek API instead of local model.",
     )
     parser.add_argument(
         "--model",
@@ -70,25 +66,9 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def resolve_config(args: argparse.Namespace) -> dict:
-    if args.deepseek:
-        import os
-        return {
-            "api_key": os.environ.get("DEEPSEEK_API_KEY", ""),
-            "base_url": args.base_url or os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-            "model": args.model or os.environ.get("DEEPSEEK_MODEL", "deepseek-flash"),
-        }
-    return {
-        "api_key": "not-needed",
-        "base_url": args.base_url or "http://0.0.0.0:8080/v1",
-        "model": args.model or "/models/Qwen3-14B-Q5_K_M.gguf",
-    }
-
-
 def main() -> None:
     args = parse_args()
 
-    # Logging
     if args.quiet:
         log_level = logging.CRITICAL
     elif args.verbose:
@@ -102,16 +82,18 @@ def main() -> None:
         stream=sys.stderr,
     )
 
-    config = resolve_config(args)
-
-    if args.deepseek and not config["api_key"]:
-        print("ERROR: Set DEEPSEEK_API_KEY env var", file=sys.stderr)
+    api_key = os.environ.get("GROQ_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
+    if not api_key:
+        print("ERROR: Set GROQ_API_KEY env var", file=sys.stderr)
         sys.exit(1)
 
-    client = DeepSeekClient(
-        api_key=config["api_key"],
-        base_url=config["base_url"],
-        model=config["model"],
+    base_url = args.base_url or os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+    model = args.model or os.environ.get("LLM_MODEL", "openai/gpt-oss-20b")
+
+    client = LLMClient(
+        api_key=api_key,
+        base_url=base_url,
+        model=model,
         timeout=args.timeout,
     )
     interpreter = LLMInterpreter(
@@ -122,8 +104,8 @@ def main() -> None:
 
     notes = args.note
 
-    print(f"Model: {config['model']}", file=sys.stderr)
-    print(f"Base URL: {config['base_url']}", file=sys.stderr)
+    print(f"Model: {model}", file=sys.stderr)
+    print(f"Base URL: {base_url}", file=sys.stderr)
     print(f"Notes ({len(notes)}):", file=sys.stderr)
     for i, note in enumerate(notes):
         print(f"  [{i}] {note}", file=sys.stderr)
@@ -131,10 +113,8 @@ def main() -> None:
 
     result = interpreter.interpret(notes, scenario_id=args.scenario_id)
 
-    # JSON to stdout
     print(result.model_dump_json(indent=2))
 
-    # Summary to stderr
     print(file=sys.stderr)
     print("--- Interpretation Summary ---", file=sys.stderr)
     for entry in result.directive_interpretation:
