@@ -11,7 +11,7 @@ Operator Notes (natural language)
         │
         ▼
    ┌─────────┐
-   │   LLM   │  DeepSeek-V4.1-Flash via OpenAI-compatible API
+   │   LLM   │  deepseek-v4-pro (DeepSeek API)
    └────┬────┘
         │ structured directives (JSON)
         ▼
@@ -37,7 +37,7 @@ Operator Notes (natural language)
 
 | Layer | Technology |
 |-------|-----------|
-| LLM | deepseek-flash (DeepSeek API) |
+| LLM | deepseek-v4-pro (DeepSeek API) |
 | Backend | FastAPI + Uvicorn |
 | Optimizer | PuLP (CBC solver) with SciPy fallback |
 | Validation | Pydantic v2 + custom replay validator |
@@ -169,7 +169,7 @@ curl http://localhost:8000/health
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DEEPSEEK_API_KEY` | (required) | DeepSeek API key |
-| `LLM_MODEL` | `deepseek-flash` | Model identifier |
+| `LLM_MODEL` | `deepseek-v4-pro` | Model identifier |
 | `LLM_BASE_URL` | `https://api.deepseek.com` | API base URL |
-| `LLM_TIMEOUT` | `8` | LLM call timeout (seconds) |
-| `SOLVER_BACKEND` | `pulp` | Solver: `pulp` |
+| `LLM_TIMEOUT` | `15` | LLM call timeout (seconds) |
+| `SOLVER_BACKEND` | `pulp` | Solver: `pulp` or `scipy` |

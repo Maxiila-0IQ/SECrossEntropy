@@ -43,7 +43,7 @@ def _build_client() -> LLMClient:
 def _build_interpreter() -> LLMInterpreter:
     return LLMInterpreter(
         client=_build_client(),
-        max_retries=1,
+        max_retries=2,
         max_tokens=1200,
     )
 

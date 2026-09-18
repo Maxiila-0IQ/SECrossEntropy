@@ -6,9 +6,9 @@ MAX_HOURS = 24
 
 class Settings:
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "deepseek-flash")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "deepseek-v4-pro")
     LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
-    LLM_TIMEOUT: float = float(os.getenv("LLM_TIMEOUT", "8"))
+    LLM_TIMEOUT: float = float(os.getenv("LLM_TIMEOUT", "15"))
     LLM_TEMPERATURE: float = 0.0
 
     SOLVER_BACKEND: str = os.getenv("SOLVER_BACKEND", "pulp")
